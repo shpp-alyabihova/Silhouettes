@@ -2,13 +2,15 @@
 #include <iostream>
 #include <string>
 #include "console.h"
-#include "vector.h"
+//#include "vector.h"
 #include "simpio.h"
-#include "pqueue.h"
+//#include "pqueue.h"
 #include "gbufferedimage.h"
 #include "gwindow.h"
 #include "random.h"
 #include <hwvector.h>
+#include <hwpqueue.h>
+
 
 using namespace std;
 
@@ -43,7 +45,7 @@ GBufferedImage* openFile();
 /*
  * Creates a Vector of filenames with image from text file.
  */
-Vector<string> createTestFilenames();
+HWVector<string> createTestFilenames();
 
 
 /*
@@ -118,7 +120,7 @@ int calculateNumOfRowsOfObj(int * ptrH, int rows);
  * according to their placement in the image from left to right.
  * @return int - the estimated number of persons based on the objects parameters.
  */
-int calculateEstimateNumOfObj(bool **ptrIMG, int rows, int columns, PriorityQueue<Silhouette> & objectsFeatures);
+int calculateEstimateNumOfObj(bool **ptrIMG, int rows, int columns, HWPriorityQueue<Silhouette> & objectsFeatures);
 
 
 /*
@@ -131,7 +133,7 @@ int calculateEstimateNumOfObj(bool **ptrIMG, int rows, int columns, PriorityQueu
  * @param Vector<int> takes a reference to the Vector where the number of black pixels of each columns for each separate object will be stored.
  * @param Vector<int> takes a reference to the Vector where the number of black pixels of each rows for each separate object will be stored.
  */
-void recursionFillObject(int rows, int columns, int i, int j, bool **ptrIMG, Vector<int> &, Vector<int> &);
+void recursionFillObject(int rows, int columns, int i, int j, bool **ptrIMG, HWVector<int> &, HWVector<int> &);
 
 
 /*
@@ -141,7 +143,7 @@ void recursionFillObject(int rows, int columns, int i, int j, bool **ptrIMG, Vec
  * @param Vector<int> takes a reference to the Vector where the number of black pixels of each rows for each separate object is stored.
  * @return Silhouette -  the struct with data of the separate object.
  */
-Silhouette analysingObjects(Vector<int> & charactXOfObj, Vector<int> & charactYOfObj);
+Silhouette analysingObjects(HWVector<int> & charactXOfObj, HWVector<int> & charactYOfObj);
 
 
 /*
@@ -150,7 +152,7 @@ Silhouette analysingObjects(Vector<int> & charactXOfObj, Vector<int> & charactYO
  * @param int takes a variable for passing data that characterize the maximum length of the requested parameter.
  * @return int starting requested coordinate.
  */
-int determiningParametersOfObject(Vector<int> & charactOfObj, int & length);
+int determiningParametersOfObject(HWVector<int> & charactOfObj, int & length);
 
 
 /*
@@ -163,7 +165,7 @@ int determiningParametersOfObject(Vector<int> & charactOfObj, int & length);
  * @param int takes the estimated number of persons based on the objects parameters.
  *
  */
-void outputResultNumOfPerson(PriorityQueue<Silhouette> objectsFeatures, int rowsOfObj, int *ptrH, int * ptrV, int columns, int estimatedNumObj);
+void outputResultNumOfPerson(HWPriorityQueue<Silhouette> objectsFeatures, int rowsOfObj, int *ptrH, int * ptrV, int columns, int estimatedNumObj);
 
 
 /*
@@ -173,7 +175,7 @@ void outputResultNumOfPerson(PriorityQueue<Silhouette> objectsFeatures, int rows
  * @param PriorityQueue<Silhouette> takes all separate objects in PriorityQueue according to their placement in the image from left to right.
  * @return int - estimated number of heads of the object.
  */
-int countingHeads(int * ptrV, int columns, PriorityQueue<Silhouette> objectsFeatures);
+int countingHeads(int * ptrV, int columns, HWPriorityQueue<Silhouette> objectsFeatures);
 
 
 /*
@@ -193,7 +195,7 @@ bool isEnd(int i, int columns);
  * @params int takes a variable for passing data that characterize the approximate number of legs.
  * @return int - the approximate number of heads.
  */
-int countingEstimatedNumOfHeads(PriorityQueue<Silhouette> objectsFeatures, int * ptrH, int & estimatedNumOfLegs);
+int countingEstimatedNumOfHeads(HWPriorityQueue<Silhouette> objectsFeatures, int * ptrH, int & estimatedNumOfLegs);
 
 
 /*
@@ -237,7 +239,7 @@ int main() {
 
     int rowsOfObj = calculateNumOfRowsOfObj(numOfObjH, rows); // Calculate number of rows of objects
 
-    PriorityQueue<Silhouette> objectsFeatures; // A container for storing all of the separate objects
+    HWPriorityQueue<Silhouette> objectsFeatures; // A container for storing all of the separate objects
     int estimatedNumObj = calculateEstimateNumOfObj(ptrIMG, rows, columns, objectsFeatures);
     destructorFor2dArray(ptrIMG);
 
@@ -268,7 +270,7 @@ GBufferedImage* openFile(){
             cin >> filename;
         }
         else{
-            Vector<string> filenames = createTestFilenames();
+            HWVector<string> filenames = createTestFilenames();
             int i;
             cout << "Enter a number from 1 to " << filenames.size() << " to open file from the list for testing: ";
             cin >> i;
@@ -291,8 +293,8 @@ GBufferedImage* openFile(){
 }
 
 
-Vector<string> createTestFilenames(){
-    Vector<string> filenames;
+HWVector<string> createTestFilenames(){
+    HWVector<string> filenames;
     ifstream readFile;
     readFile.open("filenames.txt");
     string filename;
@@ -390,13 +392,13 @@ int calculateNumOfRowsOfObj(int * ptrH, int rows){
 
 //============================================================================================================================
 
-int calculateEstimateNumOfObj(bool **ptrIMG, int rows, int columns, PriorityQueue<Silhouette> & objectsFeatures){
+int calculateEstimateNumOfObj(bool **ptrIMG, int rows, int columns, HWPriorityQueue<Silhouette> & objectsFeatures){
     int estimatedNumObj = 0;
     for (int i = 0; i < rows; ++i) {
         for (int j = 0; j < columns; ++j){
             if (ptrIMG[i][j] == 1){
-                Vector<int> charactXOfObj(columns, 0);
-                Vector<int> charactYOfObj(rows, 0);
+                HWVector<int> charactXOfObj(columns, 0);
+                HWVector<int> charactYOfObj(rows, 0);
                 recursionFillObject(rows, columns, i, j, ptrIMG, charactXOfObj, charactYOfObj);
                 Silhouette dataObj = analysingObjects(charactXOfObj, charactYOfObj);
                 if(dataObj.width > 0){
@@ -417,7 +419,7 @@ int calculateEstimateNumOfObj(bool **ptrIMG, int rows, int columns, PriorityQueu
 }
 
 
-void recursionFillObject(int rows, int columns, int i, int j, bool **ptrIMG, Vector<int> & charactXOfObj, Vector<int> & charactYOfObj){
+void recursionFillObject(int rows, int columns, int i, int j, bool **ptrIMG, HWVector<int> & charactXOfObj, HWVector<int> & charactYOfObj){
     if(ptrIMG[i][j] == 0) return;
     else {
         ptrIMG[i][j] = 0;
@@ -440,7 +442,7 @@ void recursionFillObject(int rows, int columns, int i, int j, bool **ptrIMG, Vec
 }
 
 
-Silhouette analysingObjects(Vector<int> & charactXOfObj, Vector<int> & charactYOfObj){
+Silhouette analysingObjects(HWVector<int> & charactXOfObj, HWVector<int> & charactYOfObj){
     Silhouette dataObj;
     int heightOfObj = 0;
     int widthOfObj = 0;
@@ -461,7 +463,7 @@ Silhouette analysingObjects(Vector<int> & charactXOfObj, Vector<int> & charactYO
     return dataObj;
 }
 
-int determiningParametersOfObject(Vector<int> & charactOfObj, int & length){
+int determiningParametersOfObject(HWVector<int> & charactOfObj, int & length){
     bool flag = 1;
     int startCoord = 0;
     for(int i = 0; i < charactOfObj.size(); ++i){
@@ -478,7 +480,7 @@ int determiningParametersOfObject(Vector<int> & charactOfObj, int & length){
 
 //===========================================================================================================================
 
-void outputResultNumOfPerson(PriorityQueue<Silhouette> objectsFeatures, int rowsOfObj, int * ptrH, int * ptrV, int columns, int estimatedNumObj){
+void outputResultNumOfPerson(HWPriorityQueue<Silhouette> objectsFeatures, int rowsOfObj, int * ptrH, int * ptrV, int columns, int estimatedNumObj){
     // If silhouettes locate are located in several rows then assume that the number of persons are equal to the resulting estimated number of person
     if (rowsOfObj > 1){
         cout << "number of persons = " << estimatedNumObj << " with probability 85%" << endl;
@@ -496,7 +498,7 @@ void outputResultNumOfPerson(PriorityQueue<Silhouette> objectsFeatures, int rows
     }
 }
 
-int countingHeads(int * ptrV, int columns, PriorityQueue<Silhouette> objectsFeatures){
+int countingHeads(int * ptrV, int columns, HWPriorityQueue<Silhouette> objectsFeatures){
     int numOfHeads = 0;
     int max_px = 0; //peak of pixels in each column
     int counter = 0; //counter to fix the ups and downs of the maximum number of pixels in each column
@@ -566,7 +568,7 @@ bool isEnd(int i, int columns){
 }
 
 
-int countingEstimatedNumOfHeads(PriorityQueue<Silhouette> objectsFeatures, int * ptrH, int & estimatedNumOfLegs){
+int countingEstimatedNumOfHeads(HWPriorityQueue<Silhouette> objectsFeatures, int * ptrH, int & estimatedNumOfLegs){
 
     Silhouette currentObj = objectsFeatures.dequeue();
     int from = currentObj.headY + currentObj.height - currentObj.headLength;

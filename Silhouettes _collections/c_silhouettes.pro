@@ -65,8 +65,7 @@ exists($$PWD/*.cpp) {
     SOURCES += $$PWD/*.cpp
 }
 
-HEADERS += $$PWD/lib/StanfordCPPLib/*.h \
-    ../../Collections/HWVector/hwvector.h
+HEADERS += $$PWD/lib/StanfordCPPLib/*.h
 HEADERS += $$PWD/lib/StanfordCPPLib/private/*.h
 HEADERS += $$PWD/lib/StanfordCPPLib/stacktrace/*.h
 exists($$PWD/src/*.h) {
@@ -128,6 +127,7 @@ DEFINES += SPL_VERIFY_JAVA_BACKEND_VERSION
 DEFINES += SPL_PROJECT_VERSION=20141113
 
 # directories examined by Qt Creator when student writes an #include statement
+INCLUDEPATH += $$PWD/myLib/
 INCLUDEPATH += $$PWD/lib/StanfordCPPLib/
 INCLUDEPATH += $$PWD/lib/StanfordCPPLib/private/
 INCLUDEPATH += $$PWD/lib/StanfordCPPLib/stacktrace/
@@ -136,8 +136,6 @@ INCLUDEPATH += $$PWD/
 exists($$PWD/src/test/*.h) {
     INCLUDEPATH += $$PWD/src/test/
 }
-INCLUDEPATH += $$PWD/D:/Sunny4KA/Cpp/tasks/Collections/HWVector/
-
 
 # build-specific options (debug vs release)
 CONFIG(release, debug|release) {
@@ -224,8 +222,6 @@ win32 {
         copyToDestdir($$PWD/*.txt)
     }
 }
-
-QT += core;
 
 copyResources.input += $$files($$PWD/lib/*.jar)
 win32 {
