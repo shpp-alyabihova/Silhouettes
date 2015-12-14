@@ -8,7 +8,7 @@
 #include "gbufferedimage.h"
 #include "gwindow.h"
 #include "random.h"
-#include <hwvector.h>
+
 
 using namespace std;
 
@@ -242,7 +242,7 @@ int main() {
     destructorFor2dArray(ptrIMG);
 
     if(objectsFeatures.isEmpty()){
-        cout << "Not found suitable objects, which could be interpreted as the silhouettes of people" << endl;
+        cout << "Not found suitable objects, which could be interpreted as the silhouettes of person" << endl;
     }
     else {
         outputResultNumOfPerson(objectsFeatures, rowsOfObj, numOfObjH, numOfpxObjV, columns, estimatedNumObj);
@@ -259,7 +259,7 @@ int main() {
 GBufferedImage* openFile(){
     string filename;
     GBufferedImage* img = new GBufferedImage();
-    bool choice = true;
+    bool choice = 1;
     cout << "Press 0 to run test or 1 to open file: ";
     cin >> choice;
     while(true){
@@ -313,7 +313,7 @@ bool ** binarizationImage(GBufferedImage* img, int rows, int columns){
         for(int x = 0; x < columns; ++x){
             string color = img->getRGBString(x, y);
             extractRGB(color, r, g, b);
-            if ((r + g + b)/3 < 128) {
+            if ((r + g + b)/3 < 128) { // to check black pixel
                 ptrIMG[y][x] = 1;
             }
             else ptrIMG[y][x] = 0;
@@ -479,21 +479,23 @@ int determiningParametersOfObject(Vector<int> & charactOfObj, int & length){
 //===========================================================================================================================
 
 void outputResultNumOfPerson(PriorityQueue<Silhouette> objectsFeatures, int rowsOfObj, int * ptrH, int * ptrV, int columns, int estimatedNumObj){
+    int numOfPerson = 0;
+    int probability = 0;
     // If silhouettes locate are located in several rows then assume that the number of persons are equal to the resulting estimated number of person
     if (rowsOfObj > 1){
-        cout << "number of persons = " << estimatedNumObj << " with probability 85%" << endl;
+        numOfPerson = estimatedNumObj;
+        probability = 85;
 
     }
     else {
         int numOfHeads = countingHeads(ptrV, columns, objectsFeatures);
         int estimatedNumOfLegs = 0;
         int estimatedNumOfHeads = countingEstimatedNumOfHeads(objectsFeatures, ptrH, estimatedNumOfLegs);
-        int numOfPerson = analyzingNumOfObj(objectsFeatures.size(), estimatedNumObj, numOfHeads, estimatedNumOfHeads, estimatedNumOfLegs);
-        if (numOfPerson > 1)
-            cout << "number of persons = " << numOfPerson << " (+/- 1)" << endl;
-        else
-             cout << "number of persons = " << numOfPerson << endl;
+        numOfPerson = analyzingNumOfObj(objectsFeatures.size(), estimatedNumObj, numOfHeads, estimatedNumOfHeads, estimatedNumOfLegs);
+        numOfPerson = (numOfPerson == 0) ? 1 : numOfPerson;
+        probability = 90;
     }
+    cout << "number of persons = " << numOfPerson << " with probability " << probability << "%" << endl;
 }
 
 int countingHeads(int * ptrV, int columns, PriorityQueue<Silhouette> objectsFeatures){
@@ -593,10 +595,8 @@ int calculateAverageValue(int *ptrH, int from, int to){
 int analyzingNumOfObj(int numOfObj, int estimatedNumOfObj, int numOfHeads, int estimatedNumOfHeads, int estimatedNumOfLegs){
 
     estimatedNumOfObj = (estimatedNumOfObj == 0 ? 1 : estimatedNumOfObj); //for a person is standing sideways, expected width is less than 1
-    if (numOfHeads < numOfObj) {
-        estimatedNumOfHeads = numOfObj;
-        numOfHeads = numOfObj;
-    }
+    numOfHeads = (numOfHeads < numOfObj) ? numOfObj : numOfHeads;
+    estimatedNumOfHeads = (estimatedNumOfHeads < numOfObj) ? numOfObj : estimatedNumOfHeads;
     int numOfPerson = 0;
     int minNumOfSilhuettes = (estimatedNumOfLegs + 1)/2;
     if ((minNumOfSilhuettes > numOfHeads) && (minNumOfSilhuettes <= estimatedNumOfObj)){
@@ -605,11 +605,7 @@ int analyzingNumOfObj(int numOfObj, int estimatedNumOfObj, int numOfHeads, int e
     if ((minNumOfSilhuettes > estimatedNumOfHeads) && (minNumOfSilhuettes <= estimatedNumOfObj)){
         estimatedNumOfHeads = minNumOfSilhuettes;
     }
-
     numOfPerson = (estimatedNumOfObj + numOfHeads + estimatedNumOfHeads)/3;
-    if(numOfPerson < minNumOfSilhuettes){
-        numOfPerson = minNumOfSilhuettes;
-    }
-
+    numOfPerson = (numOfPerson < minNumOfSilhuettes) ? minNumOfSilhuettes : numOfPerson;
     return numOfPerson;
 }

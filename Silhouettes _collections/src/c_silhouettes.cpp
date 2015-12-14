@@ -2,9 +2,7 @@
 #include <iostream>
 #include <string>
 #include "console.h"
-//#include "vector.h"
 #include "simpio.h"
-//#include "pqueue.h"
 #include "gbufferedimage.h"
 #include "gwindow.h"
 #include "random.h"
@@ -261,7 +259,7 @@ int main() {
 GBufferedImage* openFile(){
     string filename;
     GBufferedImage* img = new GBufferedImage();
-    bool choice = true;
+    bool choice = 1;
     cout << "Press 0 to run test or 1 to open file: ";
     cin >> choice;
     while(true){
@@ -481,22 +479,25 @@ int determiningParametersOfObject(HWVector<int> & charactOfObj, int & length){
 //===========================================================================================================================
 
 void outputResultNumOfPerson(HWPriorityQueue<Silhouette> objectsFeatures, int rowsOfObj, int * ptrH, int * ptrV, int columns, int estimatedNumObj){
+    int numOfPerson = 0;
+    int probability = 0;
     // If silhouettes locate are located in several rows then assume that the number of persons are equal to the resulting estimated number of person
     if (rowsOfObj > 1){
-        cout << "number of persons = " << estimatedNumObj << " with probability 85%" << endl;
+        numOfPerson = estimatedNumObj;
+        probability = 85;
 
     }
     else {
         int numOfHeads = countingHeads(ptrV, columns, objectsFeatures);
         int estimatedNumOfLegs = 0;
         int estimatedNumOfHeads = countingEstimatedNumOfHeads(objectsFeatures, ptrH, estimatedNumOfLegs);
-        int numOfPerson = analyzingNumOfObj(objectsFeatures.size(), estimatedNumObj, numOfHeads, estimatedNumOfHeads, estimatedNumOfLegs);
-        if (numOfPerson > 1)
-            cout << "number of persons = " << numOfPerson << " (+/- 1)" << endl;
-        else
-             cout << "number of persons = " << numOfPerson << endl;
+        numOfPerson = analyzingNumOfObj(objectsFeatures.size(), estimatedNumObj, numOfHeads, estimatedNumOfHeads, estimatedNumOfLegs);
+        numOfPerson = (numOfPerson == 0) ? 1 : numOfPerson;
+        probability = 90;
     }
+    cout << "number of persons = " << numOfPerson << " with probability " << probability << "%" << endl;
 }
+
 
 int countingHeads(int * ptrV, int columns, HWPriorityQueue<Silhouette> objectsFeatures){
     int numOfHeads = 0;
@@ -593,12 +594,9 @@ int calculateAverageValue(int *ptrH, int from, int to){
 
 
 int analyzingNumOfObj(int numOfObj, int estimatedNumOfObj, int numOfHeads, int estimatedNumOfHeads, int estimatedNumOfLegs){
-
     estimatedNumOfObj = (estimatedNumOfObj == 0 ? 1 : estimatedNumOfObj); //for a person is standing sideways, expected width is less than 1
-    if (numOfHeads < numOfObj) {
-        estimatedNumOfHeads = numOfObj;
-        numOfHeads = numOfObj;
-    }
+    numOfHeads = (numOfHeads < numOfObj) ? numOfObj : numOfHeads;
+    estimatedNumOfHeads = (estimatedNumOfHeads < numOfObj) ? numOfObj : estimatedNumOfHeads;
     int numOfPerson = 0;
     int minNumOfSilhuettes = (estimatedNumOfLegs + 1)/2;
     if ((minNumOfSilhuettes > numOfHeads) && (minNumOfSilhuettes <= estimatedNumOfObj)){
@@ -607,11 +605,7 @@ int analyzingNumOfObj(int numOfObj, int estimatedNumOfObj, int numOfHeads, int e
     if ((minNumOfSilhuettes > estimatedNumOfHeads) && (minNumOfSilhuettes <= estimatedNumOfObj)){
         estimatedNumOfHeads = minNumOfSilhuettes;
     }
-
     numOfPerson = (estimatedNumOfObj + numOfHeads + estimatedNumOfHeads)/3;
-    if(numOfPerson < minNumOfSilhuettes){
-        numOfPerson = minNumOfSilhuettes;
-    }
-
+    numOfPerson = (numOfPerson < minNumOfSilhuettes) ? minNumOfSilhuettes : numOfPerson;
     return numOfPerson;
 }

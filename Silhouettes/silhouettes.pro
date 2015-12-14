@@ -65,8 +65,7 @@ exists($$PWD/*.cpp) {
     SOURCES += $$PWD/*.cpp
 }
 
-HEADERS += $$PWD/lib/StanfordCPPLib/*.h \
-    ../../Collections/HWVector/hwvector.h
+HEADERS += $$PWD/lib/StanfordCPPLib/*.h
 HEADERS += $$PWD/lib/StanfordCPPLib/private/*.h
 HEADERS += $$PWD/lib/StanfordCPPLib/stacktrace/*.h
 exists($$PWD/src/*.h) {
@@ -136,8 +135,6 @@ INCLUDEPATH += $$PWD/
 exists($$PWD/src/test/*.h) {
     INCLUDEPATH += $$PWD/src/test/
 }
-INCLUDEPATH += $$PWD/D:/Sunny4KA/Cpp/tasks/Collections/HWVector/
-
 
 # build-specific options (debug vs release)
 CONFIG(release, debug|release) {
@@ -224,8 +221,6 @@ win32 {
         copyToDestdir($$PWD/*.txt)
     }
 }
-
-QT += core;
 
 copyResources.input += $$files($$PWD/lib/*.jar)
 win32 {
