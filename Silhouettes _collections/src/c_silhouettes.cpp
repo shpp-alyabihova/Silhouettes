@@ -75,14 +75,6 @@ void destructorFor2dArray(bool **ptrIMG);
 
 
 /*
- * Recognizes values of red, green and blue colors from hexadecimal notation of pixel color.
- * @param string takes a hexadecimal notation of pixel color.
- * @params int takes a reference to variables for passing data that characterize values of red, green and blue colors.
- */
-void extractRGB(string color, int &r, int &g, int &b);
-
-
-/*
  * Calculates a number of meeting of continuous black dots for approximate counting of the objects in each row
  * @param bool ** takes a pointer to a 2-d array, that represents the binary image.
  * @params int takes a values that characterize parameters of 2-d array (rows and columns).
@@ -111,14 +103,25 @@ int calculateNumOfRowsOfObj(int * ptrH, int rows);
 
 /*
  * Checks every pixel of the image and if it is black checks its neighboring pixels until the object is fully allocated.
- * Analyzes all objects and calculates approximate number of persons.
  * @param bool ** takes a pointer to a 2-d array, that represents the binary image.
  * @param int takes a values that characterize parameters of 2-d array (rows and columns).
+ * @param int takes a reference for storing average value of height of all objects.
+ * @return HWVector container with all separated objects
+ */
+HWVector<Silhouette> findingAllSeparatedObjects(bool **ptrIMG, int rows, int columns, int & averageHeight);
+
+
+/*
+ * Checks every pixel of the image and if it is black checks its neighboring pixels until the object is fully allocated.
+ * Analyzes all objects and calculates approximate number of persons.
+ * @param HWVector takes a container with all separated objects.
+ * @param int takes an average value of height of all objects.
  * @param PriorityQueue<Silhouette> takes a reference to the PriorityQueue where all separate objects will be stored
  * according to their placement in the image from left to right.
  * @return int - the estimated number of persons based on the objects parameters.
  */
-int calculateEstimateNumOfObj(bool **ptrIMG, int rows, int columns, HWPriorityQueue<Silhouette> & objectsFeatures);
+int calculateEstimateNumOfObj(HWVector<Silhouette> & separatedObjects, int averageHeight, HWPriorityQueue<Silhouette> & objectsFeatures);
+
 
 
 /*
@@ -141,7 +144,7 @@ void recursionFillObject(int rows, int columns, int i, int j, bool **ptrIMG, HWV
  * @param Vector<int> takes a reference to the Vector where the number of black pixels of each rows for each separate object is stored.
  * @return Silhouette -  the struct with data of the separate object.
  */
-Silhouette analysingObjects(HWVector<int> & charactXOfObj, HWVector<int> & charactYOfObj);
+Silhouette createObject(HWVector<int> & charactXOfObj, HWVector<int> & charactYOfObj);
 
 
 /*
@@ -238,11 +241,13 @@ int main() {
     int rowsOfObj = calculateNumOfRowsOfObj(numOfObjH, rows); // Calculate number of rows of objects
 
     HWPriorityQueue<Silhouette> objectsFeatures; // A container for storing all of the separate objects
-    int estimatedNumObj = calculateEstimateNumOfObj(ptrIMG, rows, columns, objectsFeatures);
+    int averageHeight = 0;
+    HWVector<Silhouette> separatedObjects = findingAllSeparatedObjects(ptrIMG, rows, columns, averageHeight);
+    int estimatedNumObj = calculateEstimateNumOfObj(separatedObjects, averageHeight, objectsFeatures);
     destructorFor2dArray(ptrIMG);
 
     if(objectsFeatures.isEmpty()){
-        cout << "Not found suitable objects, which could be interpreted as the silhouettes of people" << endl;
+        cout << "Not found suitable objects, which could be interpreted as the silhouettes of person" << endl;
     }
     else {
         outputResultNumOfPerson(objectsFeatures, rowsOfObj, numOfObjH, numOfpxObjV, columns, estimatedNumObj);
@@ -308,12 +313,12 @@ HWVector<string> createTestFilenames(){
 bool ** binarizationImage(GBufferedImage* img, int rows, int columns){
 
     bool **ptrIMG = createArrayOnHeap2d(rows, columns);
-    int r = 0, g = 0, b = 0; // values of colors rgb
     for(int y = 0; y < rows; ++y){
         for(int x = 0; x < columns; ++x){
-            string color = img->getRGBString(x, y);
-            extractRGB(color, r, g, b);
-            if ((r + g + b)/3 < 128) {
+            int r = img->getRed(img->getRGB(x, y));
+            int g = img->getGreen(img->getRGB(x, y));
+            int b = img->getBlue(img->getRGB(x, y));
+            if ((r + g + b)/3 < 128) { // sort out with black pixel if the average colour saturation less than half of the max saturation (255)
                 ptrIMG[y][x] = 1;
             }
             else ptrIMG[y][x] = 0;
@@ -335,13 +340,6 @@ bool ** createArrayOnHeap2d(int rows, int columns){
 void destructorFor2dArray(bool **ptrIMG){
     delete [] ptrIMG [0];
     delete [] ptrIMG;
-}
-
-void extractRGB(string color, int &r, int &g, int &b){
-    string numHex = "0123456789ABCDEF";
-    r = (numHex.find(color[1])) * 16  + numHex.find(color[2]);
-    g = (numHex.find(color[3])) * 16  + numHex.find(color[4]);
-    b = (numHex.find(color[5])) * 16  + numHex.find(color[6]);
 }
 
 //==========================================================================================================================
@@ -370,17 +368,11 @@ void calculateNumOfPxInEachColumns(bool **ptrIMG, int rows, int columns, int * p
 }
 
 int calculateNumOfRowsOfObj(int * ptrH, int rows){
-
     int rowsOfObj = 1;
     int heightOfRow = 0; // calculate height of row to eliminate the influence of small objects
     for (int i = 1; i < rows; ++i){
-        if ((ptrH[i] == 0) && (ptrH[i-1] > 0)){
-            if (heightOfRow > (rows - i)){
-                break;
-            }
-            else {
-                heightOfRow = 0;
-            }
+        if ((ptrH[i] == 0) && (ptrH[i-1] > 0) && (heightOfRow <= (rows - i))){
+            heightOfRow = 0;
             ++rowsOfObj;
         }
         ++heightOfRow;
@@ -390,31 +382,26 @@ int calculateNumOfRowsOfObj(int * ptrH, int rows){
 
 //============================================================================================================================
 
-int calculateEstimateNumOfObj(bool **ptrIMG, int rows, int columns, HWPriorityQueue<Silhouette> & objectsFeatures){
-    int estimatedNumObj = 0;
+HWVector<Silhouette> findingAllSeparatedObjects(bool **ptrIMG, int rows, int columns, int & averageHeight){
+    int heightOfObjects = 0;
+    HWVector<Silhouette> separatedObjects;
     for (int i = 0; i < rows; ++i) {
         for (int j = 0; j < columns; ++j){
             if (ptrIMG[i][j] == 1){
                 HWVector<int> charactXOfObj(columns, 0);
                 HWVector<int> charactYOfObj(rows, 0);
                 recursionFillObject(rows, columns, i, j, ptrIMG, charactXOfObj, charactYOfObj);
-                Silhouette dataObj = analysingObjects(charactXOfObj, charactYOfObj);
-                if(dataObj.width > 0){
-                    objectsFeatures.enqueue(dataObj, dataObj.headX);
-
-                    // calculates num of persons of separate object according a body proportions (the width of the body is two length of head)
-                    int numObj = (dataObj.width / (2*dataObj.headLength));
-
-                    if (dataObj.headLength < 3){
-                        numObj /= 2; //minimize the impact of proportions in small silhouettes
-                    }
-                    estimatedNumObj += numObj;
-                }
+                Silhouette dataObj = createObject(charactXOfObj, charactYOfObj);
+                heightOfObjects += dataObj.height;
+                separatedObjects.add(dataObj);
             }
         }
     }
-    return estimatedNumObj;
+    if (!separatedObjects.isEmpty())
+        averageHeight = heightOfObjects/separatedObjects.size();
+    return separatedObjects;
 }
+
 
 
 void recursionFillObject(int rows, int columns, int i, int j, bool **ptrIMG, HWVector<int> & charactXOfObj, HWVector<int> & charactYOfObj){
@@ -440,7 +427,8 @@ void recursionFillObject(int rows, int columns, int i, int j, bool **ptrIMG, HWV
 }
 
 
-Silhouette analysingObjects(HWVector<int> & charactXOfObj, HWVector<int> & charactYOfObj){
+
+Silhouette createObject(HWVector<int> & charactXOfObj, HWVector<int> & charactYOfObj){
     Silhouette dataObj;
     int heightOfObj = 0;
     int widthOfObj = 0;
@@ -451,15 +439,14 @@ Silhouette analysingObjects(HWVector<int> & charactXOfObj, HWVector<int> & chara
 
     // determination of the X coordinates of central point of the object
     dataObj.headX = (widthOfObj/2 + startX);
-    if((widthOfObj > 7) && (heightOfObj > 7)){ // ignore small object
-        dataObj.width = widthOfObj;
-        dataObj.height = heightOfObj;
-        dataObj.headLength = heightOfObj/8; // according to body proportions head length is 1/8 of body length
-        dataObj.headWidth = dataObj.headLength/7 * 4; // according to head proportions head width is 4/7 of head length
-    }
+    dataObj.width = widthOfObj;
+    dataObj.height = heightOfObj;
+    dataObj.headLength = heightOfObj/8; // according to body proportions head length is 1/8 of body length
+    dataObj.headWidth = dataObj.headLength/7 * 4; // according to head proportions head width is 4/7 of head length
 
     return dataObj;
 }
+
 
 int determiningParametersOfObject(HWVector<int> & charactOfObj, int & length){
     bool flag = 1;
@@ -474,6 +461,22 @@ int determiningParametersOfObject(HWVector<int> & charactOfObj, int & length){
         }
     }
     return startCoord;
+}
+
+
+
+int calculateEstimateNumOfObj(HWVector<Silhouette> & separatedObjects, int averageHeight, HWPriorityQueue<Silhouette> & objectsFeatures){
+    int estimatedNumObj = 0;
+    for (int i = 0; i < separatedObjects.size(); ++i) {
+        Silhouette dataObj = separatedObjects[i];
+        if ((dataObj.height > averageHeight/2) && (dataObj.headLength > 1)){
+            objectsFeatures.enqueue(dataObj, dataObj.headX);
+            // calculates num of persons of separate object according a body proportions (the width of the body is two length of head)
+            int numObj = (dataObj.width / (2*dataObj.headLength));
+            estimatedNumObj += numObj;
+        }
+    }
+    return estimatedNumObj;
 }
 
 //===========================================================================================================================
@@ -498,7 +501,6 @@ void outputResultNumOfPerson(HWPriorityQueue<Silhouette> objectsFeatures, int ro
     cout << "number of persons = " << numOfPerson << " with probability " << probability << "%" << endl;
 }
 
-
 int countingHeads(int * ptrV, int columns, HWPriorityQueue<Silhouette> objectsFeatures){
     int numOfHeads = 0;
     int max_px = 0; //peak of pixels in each column
@@ -517,16 +519,12 @@ int countingHeads(int * ptrV, int columns, HWPriorityQueue<Silhouette> objectsFe
             ++counter;
             max_px = ptrV[i]; // fix max value
             ++i;
-            if (counter > limit){
+            if (counter > limit)
                 growing = 1; // ascertain growth stage
-            }
-            if(growing){
+            if(growing)
                 flag = 1;   //set the flag to catch the lowering
-            }
-            if (isEnd(i, columns)){ // checking end of image
+            if (isEnd(i, columns)) // checking end of image
                 return numOfHeads;
-            }
-
         }
         counter = 0;
         while (flag && ptrV[i] <= max_px) {
@@ -545,20 +543,16 @@ int countingHeads(int * ptrV, int columns, HWPriorityQueue<Silhouette> objectsFe
                 }
             }
             ++i;
-            if (isEnd(i, columns)){ // checking end of image
+            if (isEnd(i, columns)) // checking end of image
                 return numOfHeads;
-            }
         }
-        if(!flagObj && (ptrV[i] == 0) && (!objectsFeatures.isEmpty())){
+        if(!flagObj && (ptrV[i] == 0) && (!objectsFeatures.isEmpty()))
             dataObject = objectsFeatures.dequeue();
-        }
         counter = 0;
         if (ptrV[i] <= max_px){ // processing excess lowering
             max_px = ptrV[i];
             ++i;
         }
-
-
     }
     return numOfHeads;
 }
@@ -594,6 +588,7 @@ int calculateAverageValue(int *ptrH, int from, int to){
 
 
 int analyzingNumOfObj(int numOfObj, int estimatedNumOfObj, int numOfHeads, int estimatedNumOfHeads, int estimatedNumOfLegs){
+
     estimatedNumOfObj = (estimatedNumOfObj == 0 ? 1 : estimatedNumOfObj); //for a person is standing sideways, expected width is less than 1
     numOfHeads = (numOfHeads < numOfObj) ? numOfObj : numOfHeads;
     estimatedNumOfHeads = (estimatedNumOfHeads < numOfObj) ? numOfObj : estimatedNumOfHeads;
